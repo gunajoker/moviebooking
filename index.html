@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simple Movie Booking</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background: #f6f4f1; color: #1d1b1a; }
+  header { background: #7a1425; color: #fff; padding: 16px 24px; font-size: 22px; font-weight: bold; }
+  main { max-width: 960px; margin: 0 auto; padding: 20px; }
+  h2 { margin-top: 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
+  .movie { background: #fff; border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
+  .banner { height: 150px; display: flex; align-items: center; justify-content: center;
+            padding: 10px; text-align: center; color: #fff; font-size: 20px; font-weight: bold;
+            position: relative; overflow: hidden; }
+  .banner img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+  .movie-info { padding: 10px; }
+  .movie-name { font-weight: bold; margin-bottom: 8px; }
+
+  button { font-size: 15px; padding: 8px 14px; border: 1px solid #7a1425; background: #fff;
+           color: #7a1425; border-radius: 4px; cursor: pointer; }
+  button:hover { background: #f3e3e6; }
+  button.selected { background: #7a1425; color: #fff; }
+  .primary { background: #7a1425; color: #fff; }
+  .primary:hover { background: #5e0f1d; }
+
+  .box { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin-bottom: 16px; }
+  .box h3 { margin: 0 0 10px 0; font-size: 16px; }
+  .options button { margin: 0 8px 8px 0; }
+
+  .screen { background: #ccc; text-align: center; padding: 4px; margin: 10px auto 16px; max-width: 420px; font-size: 13px; }
+  .seat-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .row-label { width: 20px; font-weight: bold; }
+  .seat { width: 38px; padding: 8px 0; font-size: 13px; }
+  .seat:disabled { background: #eee; border-color: #bbb; color: #999; cursor: not-allowed; }
+  .group-title { text-align: center; font-size: 13px; color: #555; margin-bottom: 6px; }
+  .gap { height: 28px; }
+
+  .error { color: #b00020; margin: 8px 0; min-height: 20px; }
+  .total { font-size: 18px; font-weight: bold; margin: 8px 0; }
+  .confirm-line { margin: 6px 0; }
+  .tick { font-size: 40px; color: #1b7a3a; }
+</style>
+</head>
+<body>
+
+<header>Simple Movie Booking</header>
+
+<main>
+
+  <!-- HOME PAGE -->
+  <section id="home-page">
+    <h2>Now showing</h2>
+    <div class="grid" id="movie-list"></div>
+  </section>
+
+  <!-- BOOKING PAGE -->
+  <section id="booking-page" hidden>
+    <h2 id="booking-title"></h2>
+
+    <div class="box">
+      <h3>Choose date</h3>
+      <div class="options" id="date-options"></div>
+    </div>
+
+    <div class="box">
+      <h3>Choose time</h3>
+      <div class="options" id="time-options"></div>
+    </div>
+
+    <div class="box">
+      <h3>Choose class</h3>
+      <div class="options" id="class-options"></div>
+    </div>
+
+    <div class="box">
+      <h3>Number of tickets</h3>
+      <select id="ticket-count"></select>
+    </div>
+
+    <div class="box">
+      <h3>Choose your seats</h3>
+      <div class="screen">SCREEN</div>
+      <div id="seat-area"></div>
+    </div>
+
+    <div class="total" id="summary"></div>
+    <div class="error" id="error-msg"></div>
+    <button id="back-btn">Back</button>
+    <button id="pay-btn" class="primary">Pay</button>
+  </section>
+
+  <!-- CONFIRMATION PAGE -->
+  <section id="confirm-page" hidden>
+    <div class="box" style="text-align:center">
+      <div class="tick">&#10003;</div>
+      <h2>Payment successful</h2>
+      <p>Your booking is confirmed.</p>
+      <div id="confirm-details"></div>
+      <br>
+      <button id="home-btn" class="primary">Home</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // ---------- DATA ----------
+  // To use a real poster, replace the image URL of that movie.
+  var movies = [
+    { name: "Midnight Express",   image: "https://picsum.photos/seed/midnight-express/340/300" },
+    { name: "Star Harbor",        image: "https://picsum.photos/seed/star-harbor/340/300" },
+    { name: "The Last Lantern",   image: "https://picsum.photos/seed/the-last-lantern/340/300" },
+    { name: "Desert Rose",        image: "https://picsum.photos/seed/desert-rose/340/300" },
+    { name: "Iron Monsoon",       image: "https://picsum.photos/seed/iron-monsoon/340/300" },
+    { name: "Neon Nights",        image: "https://picsum.photos/seed/neon-nights/340/300" },
+    { name: "Paper Planes",       image: "https://picsum.photos/seed/paper-planes/340/300" },
+    { name: "Ocean Echo",         image: "https://picsum.photos/seed/ocean-echo/340/300" },
+    { name: "Crimson Trail",      image: "https://picsum.photos/seed/crimson-trail/340/300" },
+    { name: "Silent Valley",      image: "https://picsum.photos/seed/silent-valley/340/300" },
+    { name: "Golden Hour",        image: "https://picsum.photos/seed/golden-hour/340/300" },
+    { name: "Tiger Lane",         image: "https://picsum.photos/seed/tiger-lane/340/300" },
+    { name: "Moon Garden",        image: "https://picsum.photos/seed/moon-garden/340/300" },
+    { name: "Rapid Fire",         image: "https://picsum.photos/seed/rapid-fire/340/300" },
+    { name: "The Clockmaker",     image: "https://picsum.photos/seed/the-clockmaker/340/300" },
+    { name: "Blue Horizon",       image: "https://picsum.photos/seed/blue-horizon/340/300" },
+    { name: "Dream Catcher",      image: "https://picsum.photos/seed/dream-catcher/340/300" },
+    { name: "Thunder Alley",      image: "https://picsum.photos/seed/thunder-alley/340/300" },
+    { name: "Marina Beach Story", image: "https://picsum.photos/seed/marina-beach-story/340/300" },
+    { name: "Velvet Sky",         image: "https://picsum.photos/seed/velvet-sky/340/300" },
+    { name: "Jungle Run",         image: "https://picsum.photos/seed/jungle-run/340/300" },
+    { name: "Echo Station",       image: "https://picsum.photos/seed/echo-station/340/300" },
+    { name: "Saffron Skies",      image: "https://picsum.photos/seed/saffron-skies/340/300" },
+    { name: "Quiet Harbor",       image: "https://picsum.photos/seed/quiet-harbor/340/300" },
+    { name: "Final Lap",          image: "https://picsum.photos/seed/final-lap/340/300" }
+  ];
+
+  var times = ["11:00 AM", "3:00 PM", "7:00 PM"];
+
+  var classes = {
+    "Budget class": { price: 199, rows: ["A", "B"] },
+    "First class":  { price: 250, rows: ["C", "D", "E"] }
+  };
+
+  var groupOrder = ["Budget class", "First class"];
+
+  var SEATS_PER_ROW = 8;
+  var MAX_TICKETS = 6;
+
+  // ---------- STATE ----------
+  var state = { movie: "", date: "", time: "", cls: "", count: 1, seats: [] };
+
+  // ---------- HELPERS ----------
+  function $(id) { return document.getElementById(id); }
+
+  function showPage(id) {
+    $("home-page").hidden = true;
+    $("booking-page").hidden = true;
+    $("confirm-page").hidden = true;
+    $(id).hidden = false;
+    window.scrollTo(0, 0);
+  }
+
+  function getDates() {
+    var result = [];
+    for (var i = 0; i < 3; i++) {
+      var d = new Date();
+      d.setDate(d.getDate() + i);
+      result.push(d.toDateString());
+    }
+    return result;
+  }
+
+  // Builds a row of buttons. Clicking one marks it selected and calls onPick(value).
+  function buildOptions(containerId, items, selectedValue, onPick, labelFn) {
+    var container = $(containerId);
+    container.innerHTML = "";
+    items.forEach(function (item) {
+      var btn = document.createElement("button");
+      btn.textContent = labelFn ? labelFn(item) : item;
+      if (item === selectedValue) btn.className = "selected";
+      btn.onclick = function () { onPick(item); };
+      container.appendChild(btn);
+    });
+  }
+
+  // ---------- HOME PAGE ----------
+  function buildMovieList() {
+    var list = $("movie-list");
+    movies.forEach(function (movie, i) {
+      var hue = (i * 47) % 360;
+      var card = document.createElement("div");
+      card.className = "movie";
+      card.innerHTML =
+        '<div class="banner" style="background:hsl(' + hue + ',55%,35%)">' + movie.name +
+          '<img src="' + movie.image + '" alt="' + movie.name + ' banner" onerror="this.style.display=\'none\'">' +
+        '</div>' +
+        '<div class="movie-info">' +
+          '<div class="movie-name">' + movie.name + '</div>' +
+          '<button class="primary book-btn" id="book-' + i + '">Book</button>' +
+        '</div>';
+      list.appendChild(card);
+      $("book-" + i).onclick = function () { openBooking(movie.name); };
+    });
+  }
+
+  // ---------- BOOKING PAGE ----------
+  function openBooking(name) {
+    state.movie = name;
+    state.date = getDates()[0];
+    state.time = times[0];
+    state.cls = "Budget class";
+    state.count = 1;
+    state.seats = [];
+
+    $("booking-title").textContent = "Book tickets: " + name;
+    $("ticket-count").value = 1;
+    renderBooking();
+    showPage("booking-page");
+  }
+
+  function renderBooking() {
+    buildOptions("date-options", getDates(), state.date, function (v) { state.date = v; renderBooking(); });
+    buildOptions("time-options", times, state.time, function (v) { state.time = v; renderBooking(); });
+    buildOptions("class-options", Object.keys(classes), state.cls, function (v) {
+      state.cls = v;
+      state.seats = [];
+      renderBooking();
+    }, function (c) { return c + " - Rs. " + classes[c].price; });
+
+    renderSeats();
+    renderSummary();
+    $("error-msg").textContent = "";
+  }
+
+  function renderSeats() {
+    var area = $("seat-area");
+    area.innerHTML = "";
+    groupOrder.forEach(function (clsName, g) {
+      if (g > 0) {
+        var gap = document.createElement("div");
+        gap.className = "gap";
+        area.appendChild(gap);
+      }
+
+      var title = document.createElement("div");
+      title.className = "group-title";
+      title.textContent = clsName + " - Rs. " + classes[clsName].price;
+      area.appendChild(title);
+
+      classes[clsName].rows.forEach(function (row) {
+        var rowDiv = document.createElement("div");
+        rowDiv.className = "seat-row";
+        var label = document.createElement("span");
+        label.className = "row-label";
+        label.textContent = row;
+        rowDiv.appendChild(label);
+
+        for (var n = 1; n <= SEATS_PER_ROW; n++) {
+          var seatName = row + n;
+          var btn = document.createElement("button");
+          btn.className = "seat" + (state.seats.indexOf(seatName) > -1 ? " selected" : "");
+          btn.id = "seat-" + seatName;
+          btn.textContent = seatName;
+          btn.disabled = (clsName !== state.cls);
+          btn.onclick = makeSeatClick(seatName);
+          rowDiv.appendChild(btn);
+        }
+        area.appendChild(rowDiv);
+      });
+    });
+  }
+
+  function makeSeatClick(seatName) {
+    return function () {
+      var pos = state.seats.indexOf(seatName);
+      if (pos > -1) {
+        state.seats.splice(pos, 1);
+      } else {
+        if (state.seats.length >= state.count) {
+          $("error-msg").textContent = "You chose " + state.count + " ticket(s). Unselect a seat first.";
+          return;
+        }
+        state.seats.push(seatName);
+      }
+      renderSeats();
+      renderSummary();
+      $("error-msg").textContent = "";
+    };
+  }
+
+  function getTotal() {
+    return state.count * classes[state.cls].price;
+  }
+
+  function renderSummary() {
+    var seatText = state.seats.length ? state.seats.join(", ") : "none";
+    $("summary").textContent =
+      "Seats: " + seatText + "  |  Total: Rs. " + getTotal();
+    $("pay-btn").textContent = "Pay Rs. " + getTotal();
+  }
+
+  // ---------- PAY AND CONFIRM ----------
+  function pay() {
+    if (state.seats.length !== state.count) {
+      $("error-msg").textContent =
+        "Please select " + state.count + " seat(s). You have selected " + state.seats.length + ".";
+      return;
+    }
+    var bookingId = "BK" + Math.floor(10000 + Math.random() * 90000);
+    $("confirm-details").innerHTML =
+      '<div class="confirm-line"><b>Booking ID:</b> <span id="booking-id">' + bookingId + '</span></div>' +
+      '<div class="confirm-line"><b>Movie:</b> ' + state.movie + '</div>' +
+      '<div class="confirm-line"><b>Date:</b> ' + state.date + '</div>' +
+      '<div class="confirm-line"><b>Time:</b> ' + state.time + '</div>' +
+      '<div class="confirm-line"><b>Class:</b> ' + state.cls + '</div>' +
+      '<div class="confirm-line"><b>Seats:</b> ' + state.seats.join(", ") + '</div>' +
+      '<div class="confirm-line"><b>Amount paid:</b> Rs. ' + getTotal() + '</div>';
+    showPage("confirm-page");
+  }
+
+  // ---------- START ----------
+  (function init() {
+    for (var i = 1; i <= MAX_TICKETS; i++) {
+      var opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = i;
+      $("ticket-count").appendChild(opt);
+    }
+    $("ticket-count").onchange = function () {
+      state.count = parseInt(this.value, 10);
+      state.seats = [];
+      renderBooking();
+    };
+    $("pay-btn").onclick = pay;
+    $("back-btn").onclick = function () { showPage("home-page"); };
+    $("home-btn").onclick = function () { showPage("home-page"); };
+
+    buildMovieList();
+    showPage("home-page");
+  })();
+</script>
+
+</body>
+</html>
